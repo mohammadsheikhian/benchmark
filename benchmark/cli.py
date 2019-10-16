@@ -1,5 +1,7 @@
 from easycli import Root, SubCommand, Argument
 
+from benchmark.thread_request import run
+
 
 __version__ = '0.1.0'
 
@@ -40,13 +42,36 @@ class Main(Root):
             default='GET',
             help='HTTP Method Name',
         ),
+        Argument(
+            '-f',
+            '--form',
+            action='append',
+            type=str,
+            help='Form Parameters',
+        ),
+        Argument(
+            '-H',
+            '--headers',
+            action='append',
+            type=str,
+            help='Headers',
+        ),
     ]
 
     def __call__(self, args):
-        print('Root command, args:', args)
-        if args.version:
-            print(__version__)
-            return
+        headers = dict(tuple(i.split('=')) for i in args.headers) \
+            if args.headers else None
+        form = dict(tuple(i.split('=')) for i in args.form) \
+            if args.form else None
+
+        run(
+            args.number,
+            args.thread,
+            args.url,
+            args.method,
+            form,
+            headers
+        )
 
 
 def main():

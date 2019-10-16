@@ -3,7 +3,7 @@ class StatusAnalize:
     failed_status = 0
 
 
-class R:
+class Request:
 
     def __init__(self, index=None, url=None, method_name=None, form=None,
                  headers=None):
