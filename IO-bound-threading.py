@@ -15,17 +15,24 @@ list_of_duration_times = []
 min_duration_time = 0
 max_duration_time = 0
 mean_duration_time = 0
-count_of_requests = 1000
-count_of_threads = 10
+count_of_requests = 100
+count_of_threads = 5
+analyze_thread = {}
+
+
+class StatusAnalize:
+    success_status = 0
+    failed_status = 0
 
 
 def get_session():
-    if not hasattr(thread_local, "session"):
+    if not hasattr(thread_local, 'session'):
         thread_local.session = requests.Session()
+        analyze_thread[threading.get_ident()] = StatusAnalize()
     return thread_local.session
 
 
-def download_site(url):
+def call_APIs(url):
     start_times[url[0]] = perf_counter()
     session = get_session()
     with session.request('VERIFY',url[1]) as response:
@@ -33,26 +40,56 @@ def download_site(url):
         request_threads[url[0]] = (threading.get_ident(), response.status_code)
 
 
-def download_all_sites(sites):
+def call_all_APIs(sites):
     with concurrent.futures.ThreadPoolExecutor(max_workers=count_of_threads) as executor:
-        executor.map(download_site, sites)
+        executor.map(call_APIs, sites)
 
 
-if __name__ == "__main__":
-    sites = []
-    for i in range(count_of_requests):
-        sites.append((i, 'http://192.168.1.80/apiv1/tokens/86/codes/924F0A6214F59712?primitive=yes'))
+def analyze_status_code(request_threads):
+    for request in request_threads:
+        if 500 <= request_threads[request][1] < 600:
+            analyze_thread[request_threads[request][0]].failed_status += 1
+        else:
+            analyze_thread[request_threads[request][0]].success_status += 1
 
-    start_time = time.time()
-    download_all_sites(sites)
-    duration = time.time() - start_time
-    print(f"Downloaded {len(sites)} in {duration} seconds")
+    for thread_identity in analyze_thread:
+        print(f'Thread identyti: {thread_identity}')
+        print(
+            f'Success requests: {analyze_thread[thread_identity].success_status}'
+        )
+        print(
+            f'Failed requests: {analyze_thread[thread_identity].failed_status}\n'
+        )
 
+
+def analyze_time():
     for i in range(count_of_requests):
         duration_times[i] = end_times[i]-start_times[i]
 
     list_of_duration_times = [v for v in duration_times.values()]
     list_of_duration_times.sort()
+#    print(f'All times: {list_of_duration_times}')
+
     min_duration_time = list_of_duration_times[0]
+    print(f'Minimum time: {min_duration_time}')
+
     max_duration_time = list_of_duration_times[-1]
-    #print(request_threads)
+    print(f'Maximum time: {max_duration_time}')
+
+    mean_duration_time = sum(list_of_duration_times) / count_of_requests
+    print(f'mean time: {mean_duration_time}\n')
+
+
+if __name__ == '__main__':
+    APIs = []
+    for i in range(count_of_requests):
+        APIs.append((i, 'http://alpha-cas.carrene.com/apiv1/version'))
+
+    start_time = time.time()
+    call_all_APIs(APIs)
+    duration = time.time() - start_time
+    print(f'Downloaded {len(APIs)} in {duration} seconds\n')
+
+    analyze_time()
+    analyze_status_code(request_threads)
+
